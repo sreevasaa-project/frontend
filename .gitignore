@@ -1,11 +1,10 @@
-node_modules/
-**/node_modules/
-dist/
-**/dist/
-.env
+node_modules
+dist
 .DS_Store
 *.local
-build/
-**/build/
-.vscode/
-.idea/
+.env
+.env.*
+! .env.example
+.vscode
+.idea
+build
