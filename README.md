@@ -27,6 +27,7 @@ git --version
 Clone the project to your local machine:
 ```bash
 git clone https://github.com/sreevasaa-project/frontend.git
+cd frontend
 cd printech-app
 ```
 
