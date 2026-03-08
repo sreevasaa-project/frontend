@@ -220,13 +220,15 @@ function OperatorPage({ state, setState, jobs }) {
 
         {/* Steps */}
         <div className="steps-container" style={{ display: "flex", alignItems: "center", marginBottom: 32, background: C.white, borderRadius: 14, padding: "16px 24px", border: `1px solid ${C.border}`, boxShadow: "0 2px 8px #0001" }}>
-          <StepDot n={1} label="AUTH" />
+          <StepDot n={1} label="EMP" />
           <div className="step-line" style={{ flex: 0.5, height: 1, background: C.border }} />
-          <StepDot n={2} label="MACHINE" />
+          <StepDot n={2} label="JOB" />
           <div className="step-line" style={{ flex: 0.5, height: 1, background: C.border }} />
-          <StepDot n={3} label="STATUS" />
+          <StepDot n={3} label="MACHINE" />
           <div className="step-line" style={{ flex: 0.5, height: 1, background: C.border }} />
-          <StepDot n={4} label="DONE" />
+          <StepDot n={4} label="STATUS" />
+          <div className="step-line" style={{ flex: 0.5, height: 1, background: C.border }} />
+          <StepDot n={5} label="DONE" />
         </div>
 
         {/* Card */}
@@ -235,7 +237,7 @@ function OperatorPage({ state, setState, jobs }) {
           <div style={{ height: 4, background: `linear-gradient(90deg, ${C.accent}, ${C.accentMid})` }} />
           <div className="card-padding" style={{ padding: "28px 32px" }}>
 
-            {/* STEP 1 — AUTH */}
+            {/* STEP 1 — EMP */}
             {step === 1 && (
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Lora',serif", marginBottom: 4 }}>Employee Authentication</div>
@@ -253,7 +255,6 @@ function OperatorPage({ state, setState, jobs }) {
                 {authMode === "id" ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <Input label="EMPLOYEE ID" placeholder="e.g. EMP-042" value={empId} onChange={v => update({ empId: v })} mono />
-                    <Input label="JOB LOOKUP NUMBER" placeholder="e.g. JC-4821" value={jobLookupNumber} onChange={v => update({ jobLookupNumber: v })} mono />
                   </div>
                 ) : (
                   <div style={{ border: `2px solid ${C.accent}`, borderRadius: 14, padding: "16px", background: C.white }}>
@@ -291,9 +292,6 @@ function OperatorPage({ state, setState, jobs }) {
                             }}
                           />
                         </div>
-                        <div style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8 }}>
-                          Hold your employee QR badge in front of the camera
-                        </div>
                       </div>
                     )}
                   </div>
@@ -302,21 +300,106 @@ function OperatorPage({ state, setState, jobs }) {
                 <button
                   onClick={() => {
                     const validId = empId.startsWith("EMP-");
-                    const validJC = jobLookupNumber.startsWith("JC-");
-                    if (authMode === "id" && validId && validJC) update({ step: 2, jobCard: jobLookupNumber });
+                    if (authMode === "id" && validId) update({ step: 2 });
                     if (authMode === "qr" && qrAuthDone) update({ step: 2 });
                   }}
                   style={{
                     marginTop: 24, width: "100%", padding: "13px", borderRadius: 11, border: "none", background: C.accent, color: C.white, fontWeight: 700, fontSize: 15, fontFamily: "'DM Sans',sans-serif", cursor: "pointer",
-                    opacity: (authMode === "id" ? (empId.startsWith("EMP-") && jobLookupNumber.startsWith("JC-")) : qrAuthDone) ? 1 : 0.4
+                    opacity: (authMode === "id" ? empId.startsWith("EMP-") : qrAuthDone) ? 1 : 0.4
                   }}>
-                  Authenticate & Continue →
+                  Continue →
                 </button>
               </div>
             )}
 
-            {/* STEP 2 — MACHINE */}
+            {/* STEP 2 — JOB */}
             {step === 2 && (
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Lora',serif", marginBottom: 4 }}>Job Selection</div>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 24 }}>Enter or scan your Job Card ID</div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  {["id", "qr"].map(m => (
+                    <button key={m} onClick={() => { update({ authMode: m, scannerActive: false, scanError: "" }); setQrJobDone(false); }}
+                      style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1.5px solid ${authMode === m ? C.accent : C.border}`, background: authMode === m ? C.accentLt : C.white, color: authMode === m ? C.accent : C.muted, fontFamily: "'DM Sans',sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }}>
+                      {m === "id" ? "◉  Job ID" : "◎  Scan QR"}
+                    </button>
+                  ))}
+                </div>
+
+                {authMode === "id" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <Input label="JOB LOOKUP NUMBER" placeholder="e.g. JC-4821" value={jobLookupNumber} onChange={v => update({ jobLookupNumber: v })} mono />
+                  </div>
+                ) : (
+                  <div style={{ border: `2px solid ${C.accent}`, borderRadius: 14, padding: "16px", background: C.white }}>
+                    {!scannerActive ? (
+                      <div style={{ textAlign: "center", padding: "16px" }}>
+                        <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
+                        <div style={{ color: C.accent, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", fontSize: 14 }}>Job Card Scanner</div>
+                        <div style={{ color: C.muted, fontSize: 12, marginTop: 4 }}>Scan your job card QR code</div>
+                        {scanError && (
+                          <div style={{ color: "#dc2626", fontSize: 11, marginTop: 8, padding: "6px 12px", background: "#fef2f2", borderRadius: 6 }}>
+                            {scanError}
+                          </div>
+                        )}
+                        <button onClick={startScanner}
+                          style={{ marginTop: 16, padding: "10px 24px", borderRadius: 8, border: `1.5px solid ${C.accent}`, background: C.accent, color: C.white, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                          Start Scanner
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.accent }}>Scanning Job Card...</div>
+                          <button onClick={stopScanner}
+                            style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.white, color: C.muted, fontSize: 11, cursor: "pointer" }}>
+                            Cancel
+                          </button>
+                        </div>
+                        <div style={{ borderRadius: 10, overflow: "hidden", background: "#000", height: 320, position: 'relative' }}>
+                          <Scanner
+                            onScan={(res) => {
+                              if (res?.[0]) {
+                                const data = res[0].rawValue;
+                                if (data.startsWith('JC-')) {
+                                  update({ jobLookupNumber: data, jobCard: data, scannerActive: false });
+                                  setQrJobDone(true);
+                                }
+                              }
+                            }}
+                            onError={handleScanError}
+                            styles={{
+                              container: { width: '100%', height: '100%' },
+                              video: { objectFit: 'cover', width: '100%', height: '100%' }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                  <button onClick={() => update({ step: 1 })} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.white, color: C.muted, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>← Back</button>
+                  <button
+                    onClick={() => {
+                      const validJC = jobLookupNumber.startsWith("JC-");
+                      if (authMode === "id" && validJC) update({ step: 3, jobCard: jobLookupNumber });
+                      if (authMode === "qr" && qrJobDone) update({ step: 3 });
+                    }}
+                    style={{
+                      flex: 1, padding: "13px", borderRadius: 11, border: "none", background: C.accent, color: C.white, fontWeight: 700, fontSize: 15, fontFamily: "'DM Sans',sans-serif", cursor: "pointer",
+                      opacity: (authMode === "id" ? jobLookupNumber.startsWith("JC-") : qrJobDone) ? 1 : 0.4
+                    }}>
+                    Continue →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3 — MACHINE */}
+            {step === 3 && (
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Lora',serif", marginBottom: 4 }}>Select Machine</div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>Job Card: <strong style={{ color: C.accent, fontFamily: "'DM Mono',monospace" }}>{jobCard}</strong></div>
@@ -359,8 +442,8 @@ function OperatorPage({ state, setState, jobs }) {
                 )}
 
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                  <button onClick={() => update({ step: 1 })} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.white, color: C.muted, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>← Back</button>
-                  <button onClick={() => { if (machine) update({ step: 3 }); }}
+                  <button onClick={() => update({ step: 2 })} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.white, color: C.muted, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>← Back</button>
+                  <button onClick={() => { if (machine) update({ step: 4 }); }}
                     style={{ flex: 1, padding: "13px", borderRadius: 11, border: "none", background: C.accent, color: C.white, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: machine ? 1 : 0.4 }}>
                     Continue →
                   </button>
@@ -368,8 +451,8 @@ function OperatorPage({ state, setState, jobs }) {
               </div>
             )}
 
-            {/* STEP 3 — STATUS */}
-            {step === 3 && (
+            {/* STEP 4 — STATUS */}
+            {step === 4 && (
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Lora',serif", marginBottom: 4 }}>Update Status</div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
@@ -394,7 +477,7 @@ function OperatorPage({ state, setState, jobs }) {
                 )}
 
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => update({ step: 2 })} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.white, color: C.muted, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>← Back</button>
+                  <button onClick={() => update({ step: 3 })} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.white, color: C.muted, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>← Back</button>
                   <button onClick={() => {
                     if (status) {
                       // Logic to update the shared job state
@@ -404,7 +487,7 @@ function OperatorPage({ state, setState, jobs }) {
                         }
                         return j;
                       });
-                      setState(prev => ({ ...prev, jobs: updatedJobs, step: 4 }));
+                      setState(prev => ({ ...prev, jobs: updatedJobs, step: 5 }));
                     }
                   }}
                     style={{ flex: 1, padding: "13px", borderRadius: 11, border: "none", background: C.accent, color: C.white, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: status ? 1 : 0.4 }}>
@@ -414,8 +497,8 @@ function OperatorPage({ state, setState, jobs }) {
               </div>
             )}
 
-            {/* STEP 4 — DONE */}
-            {step === 4 && (
+            {/* STEP 5 — DONE */}
+            {step === 5 && (
               <div style={{ textAlign: "center", padding: "16px 0" }}>
                 <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accentLt, border: `3px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px" }}>✓</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: "'Lora',serif", marginBottom: 6 }}>Update Submitted!</div>
