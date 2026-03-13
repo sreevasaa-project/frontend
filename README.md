@@ -26,8 +26,8 @@ git --version
 ### 2. Repository Setup
 Clone the project to your local machine:
 ```bash
-git clone https://github.com/sreevasaa-project/frontend.git
-cd frontend
+git clone https://github.com/sreevasaa-project/Fullstack.git
+cd Fullstack
 cd printech-app
 ```
 
