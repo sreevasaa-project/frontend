@@ -58,6 +58,7 @@ Launch the development server:
 npm run dev
 ```
 
+
 ### 5. Access the App
 - The terminal will display a link like **`http://localhost:5173`**.
 - **Ctrl + Click** the link or manually type it into your browser to open the app!
