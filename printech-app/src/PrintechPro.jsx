@@ -577,23 +577,39 @@ function OperatorPage({ state, setState }) {
                     disabled={loading || !status}
                     onClick={async () => {
                       if (!status) return;
-                      
                       if (window.PRINTECH_DEV_MODE) {
                         update({ loading: true });
                         setTimeout(() => update({ step: 5, loading: false }), 800);
                         console.log("DEV MODE: Skipping production API call. Data that would have been sent:", {
-                          workOrderId: currentJobData?.workOrderId,
-                          status: status
+                          machine_workorder_id: (() => {
+                            if (currentJobData?.machineWoList && currentJobData.machineWoList.length > 0) {
+                              const selected = currentJobData.machineWoList.find(m => (m.machine_name || m.machineName || m.machine) === machine);
+                              return selected?.machine_workorder_id || selected?.machineWorkOrderId || selected?.id;
+                            }
+                            return currentJobData?.machine_workorder_id || currentJobData?.machineWorkOrderId || currentJobData?.id;
+                          })(),
+                          work_status: Number(status),
+                          token: "20A5g2n3cHGX2P7y35L8bDV7OHhyXM"
                         });
                         return;
                       }
 
                       update({ loading: true, error: "" });
                       try {
+                        // Find the correct machine_workorder_id
+                        let machineWorkOrderId = null;
+                        if (currentJobData?.machineWoList && currentJobData.machineWoList.length > 0) {
+                          const selected = currentJobData.machineWoList.find(m => (m.machine_name || m.machineName || m.machine) === machine);
+                          machineWorkOrderId = selected?.machine_workorder_id || selected?.machineWorkOrderId || selected?.id;
+                        } else {
+                          machineWorkOrderId = currentJobData?.machine_workorder_id || currentJobData?.machineWorkOrderId || currentJobData?.id;
+                        }
+                        const token = "20A5g2n3cHGX2P7y35L8bDV7OHhyXM";
+
                         const formData = new URLSearchParams();
-                        formData.append("workorderId", currentJobData?.workOrderId || "1");
-                        formData.append("workorderStatus", status);
-                        // Production API does not require token for this endpoint currently
+                        formData.append("machine_workorder_id", String(Number(machineWorkOrderId)));
+                        formData.append("work_status", String(Number(status)));
+                        formData.append("token", token);
 
                         const res = await fetch("http://117.218.59.130/vasa_wo_api/work_order/work_status_change", {
                           method: "POST",
@@ -601,7 +617,7 @@ function OperatorPage({ state, setState }) {
                           body: formData
                         });
 
-                        // We assume Success if no error thrown, even if res is null as seen in probe
+                        // We assume Success if no error thrown
                         update({ step: 5, loading: false });
                       } catch (err) {
                         update({ error: "Failed to update status", loading: false });
