@@ -166,6 +166,34 @@ function OperatorPage({ state, setState }) {
   const employeeInputRef = useRef(null);
   const jobInputRef = useRef(null);
 
+  const readMachineWorkOrderId = (obj) => (
+    obj?.machine_workorder_id ||
+    obj?.machineWorkOrderId ||
+    obj?.machineWorkId ||
+    obj?.machine_work_order_id ||
+    obj?.machine_work_orderId ||
+    obj?.machine_work_id ||
+    obj?.machine_wo_id ||
+    obj?.machineWoId ||
+    obj?.workorder_machine_id ||
+    obj?.workorderMachineId ||
+    obj?.id
+  );
+
+  const resolveMachineWorkOrderId = () => {
+    const list = currentJobData?.machineWoList;
+    const normalize = (v) => String(v || "").trim().toLowerCase();
+
+    if (Array.isArray(list) && list.length > 0) {
+      const selected = list.find((m) =>
+        normalize(m.machine_name || m.machineName || m.machine) === normalize(machine)
+      );
+      return readMachineWorkOrderId(selected || list[0]);
+    }
+
+    return readMachineWorkOrderId(currentJobData);
+  };
+
   // Session Persistence: Load Employee ID and Auto-Advance
   useEffect(() => {
     const savedEmp = localStorage.getItem("printech_emp_id");
@@ -655,13 +683,7 @@ function OperatorPage({ state, setState }) {
                         update({ loading: true });
                         setTimeout(() => update({ step: 5, loading: false }), 800);
                         console.log("DEV MODE: Skipping production API call. Data that would have been sent:", {
-                          machine_workorder_id: (() => {
-                            if (currentJobData?.machineWoList && currentJobData.machineWoList.length > 0) {
-                              const selected = currentJobData.machineWoList.find(m => (m.machine_name || m.machineName || m.machine) === machine);
-                              return selected?.machine_workorder_id || selected?.machineWorkOrderId || selected?.id;
-                            }
-                            return currentJobData?.machine_workorder_id || currentJobData?.machineWorkOrderId || currentJobData?.id;
-                          })(),
+                          machine_workorder_id: resolveMachineWorkOrderId(),
                           work_status: Number(status),
                           token: "20A5g2n3cHGX2P7y35L8bDV7OHhyXM"
                         });
@@ -670,19 +692,26 @@ function OperatorPage({ state, setState }) {
 
                       update({ loading: true, error: "" });
                       try {
-                        // Find the correct machine_workorder_id
-                        let machineWorkOrderId = null;
-                        if (currentJobData?.machineWoList && currentJobData.machineWoList.length > 0) {
-                          const selected = currentJobData.machineWoList.find(m => (m.machine_name || m.machineName || m.machine) === machine);
-                          machineWorkOrderId = selected?.machine_workorder_id || selected?.machineWorkOrderId || selected?.id;
-                        } else {
-                          machineWorkOrderId = currentJobData?.machine_workorder_id || currentJobData?.machineWorkOrderId || currentJobData?.id;
+                        const machineWorkOrderId = resolveMachineWorkOrderId();
+
+                        const machineWorkOrderIdStr = String(machineWorkOrderId ?? "").trim();
+                        const statusStr = String(status ?? "").trim();
+                        if (!machineWorkOrderIdStr || !statusStr) {
+                          update({ error: "Machine mapping missing from API response. Re-open job and select machine again.", loading: false });
+                          return;
                         }
+
                         const token = "20A5g2n3cHGX2P7y35L8bDV7OHhyXM";
 
                         const formData = new URLSearchParams();
-                        formData.append("machine_workorder_id", String(Number(machineWorkOrderId)));
-                        formData.append("work_status", String(Number(status)));
+                        formData.append("machine_workorder_id", machineWorkOrderIdStr);
+                        formData.append("work_status", statusStr);
+                        // Backward-compatible keys used by some backend variants.
+                        formData.append("workorder_status", statusStr);
+                        formData.append("work_status_id", statusStr);
+                        formData.append("status", statusStr);
+                        formData.append("empCode", String(empId || "").trim());
+                        formData.append("jobCardNo", String(jobCard || jobLookupNumber || "").trim());
                         formData.append("token", token);
 
                         const res = await fetch("http://117.218.59.130/vasa_wo_api/work_order/work_status_change", {
@@ -691,14 +720,37 @@ function OperatorPage({ state, setState }) {
                           body: formData
                         });
 
-                        const data = await res.json();
-                        if (data?.status === 1) {
+                        let data = null;
+                        let rawText = "";
+                        const contentType = res.headers.get("content-type") || "";
+                        if (contentType.includes("application/json")) {
+                          data = await res.json();
+                        } else {
+                          rawText = await res.text();
+                          try {
+                            data = JSON.parse(rawText);
+                          } catch {
+                            data = null;
+                          }
+                        }
+
+                        if (res.ok && data?.status === 1) {
                           update({ step: 5, loading: false });
                         } else {
-                          update({ error: data?.msg || "Failed to update status", loading: false });
+                          const backendMessage =
+                            data?.msg ||
+                            data?.message ||
+                            (typeof rawText === "string" && rawText.trim().slice(0, 220)) ||
+                            `Request failed (${res.status})`;
+                          console.error("work_status_change failed", {
+                            status: res.status,
+                            response: data || rawText,
+                            request: Object.fromEntries(formData.entries())
+                          });
+                          update({ error: backendMessage || "Failed to update status", loading: false });
                         }
                       } catch (err) {
-                        update({ error: "Failed to update status", loading: false });
+                        update({ error: err?.message || "Failed to update status", loading: false });
                       }
                     }}
                     style={{ flex: 1, padding: "13px", borderRadius: 11, border: "none", background: C.accent, color: C.white, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (loading || !status) ? 0.4 : 1 }}>
